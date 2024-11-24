@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Discord Bot Control Panel</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <h1>Discord Bot Control</h1>
+
+  <button onclick="toggleTheme()">Toggle Dark/Light Mode</button>
+
+  <h2>Update Bot Token</h2>
+  <input type="text" id="bot-token" placeholder="Enter new bot token" />
+  <button onclick="updateToken()">Update Token</button>
+
+  <h2>Send Message to Channel</h2>
+  <input type="text" id="channel-id" placeholder="Channel ID" />
+  <input type="text" id="message-content" placeholder="Message Content" />
+  <button onclick="sendMessage()">Send Message</button>
+
+  <h2>Send Embed to Channel</h2>
+  <input type="text" id="embed-channel-id" placeholder="Channel ID" />
+  <input type="text" id="embed-title" placeholder="Embed Title" />
+  <input type="text" id="embed-description" placeholder="Embed Description" />
+  <input type="color" id="embed-color" value="#000000" />
+  <button onclick="sendEmbed()">Send Embed</button>
+
+  <div id="toast" class="toast"></div>
+
+  <div id="loader" class="loader" style="display: none;"></div>
+
+  <script>
+    async function updateToken() {
+      showLoader();
+      const token = document.getElementById('bot-token').value;
+      const response = await fetch('/set-token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token }),
+      });
+      const data = await response.json();
+      hideLoader();
+      showToast(data.message);
+    }
+
+    async function sendMessage() {
+      showLoader();
+      const channelId = document.getElementById('channel-id').value;
+      const messageContent = document.getElementById('message-content').value;
+      const response = await fetch('/send-message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ channelId, messageContent }),
+      });
+      const data = await response.json();
+      hideLoader();
+      showToast(data.message);
+      if (data.success) {
+        saveSentChannel(channelId);
+      }
+    }
+
+    async function sendEmbed() {
+      showLoader();
+      const channelId = document.getElementById('embed-channel-id').value;
+      const title = document.getElementById('embed-title').value;
+      const description = document.getElementById('embed-description').value;
+      const color = document.getElementById('embed-color').value;
+      const response = await fetch('/send-embed', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          channelId,
+          embedContent: { title, description, color },
+        }),
+      });
+      const data = await response.json();
+      hideLoader();
+      showToast(data.message);
+      if (data.success) {
+        saveSentChannel(channelId);
+      }
+    }
+
+    function showLoader() {
+      document.getElementById('loader').style.display = 'block';
+    }
+
+    function hideLoader() {
+      document.getElementById('loader').style.display = 'none';
+    }
+
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.style.display = 'block';
+      setTimeout(() => {
+        toast.style.display = 'none';
+      }, 3000);
+    }
+
+    function saveSentChannel(channelId) {
+      let sentChannels = JSON.parse(localStorage.getItem('sentChannels')) || [];
+      if (!sentChannels.includes(channelId)) {
+        sentChannels.push(channelId);
+        localStorage.setItem('sentChannels', JSON.stringify(sentChannels));
+        updateSentChannelsList();
+      }
+    }
+
+    function updateSentChannelsList() {
+      const sentChannels = JSON.parse(localStorage.getItem('sentChannels')) || [];
+      const listElement = document.getElementById('sent-channels');
+      listElement.innerHTML = '';
+      sentChannels.forEach(channelId => {
+        const li = document.createElement('li');
+        li.textContent = `Channel ID: ${channelId}`;
+        listElement.appendChild(li);
+      });
+    }
+
+    function toggleTheme() { 
+      const currentTheme = localStorage.getItem('theme') || 'light'; 
+      const newTheme = currentTheme === 'light' ? 'dark' : 'light'; 
+      localStorage.setItem('theme', newTheme); 
+      applyTheme(newTheme); 
+    }
+
+    function applyTheme(theme) { 
+      document.body.classList.remove('light', 'dark'); 
+      document.body.classList.add(theme); 
+    }
+
+    window.onload = function () {
+      updateSentChannelsList();
+    }
+  </script>
+</body>
+</html>
